@@ -1,6 +1,7 @@
 
 export function createCharacter(option) {
     console.log(option);
+
 }
 
 //параметры персонажа

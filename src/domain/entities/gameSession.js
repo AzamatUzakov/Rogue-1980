@@ -1,11 +1,10 @@
-import { createLevel } from "./level.js"
 
 export function createGameSession(option) {
     return option
 }
 
 
-const gameSession = createGameSession({
+export const gameSession = createGameSession({
     id: 1,
     playerName: "Azamat",
     currentLevel: 1,
@@ -24,7 +23,7 @@ const gameSession = createGameSession({
     },
 })
 
-const level1 = createLevel({
+/* const level1 = createLevel({
     id: 1,
     rooms: [],
     corridors: [
@@ -32,7 +31,7 @@ const level1 = createLevel({
     ],
     startRoomId: 1,
     exitRoomId: 2,
-})
+}) */
 
 const room = {
     id: 1,                           // уникальный идентификатор комнаты
@@ -70,13 +69,17 @@ const item = {
 
 }
 
-gameSession.levels.push(level1)
-gameSession.levels[0].rooms.push(room)
-gameSession.levels[0].rooms[0].enemies.push(enemy)
-gameSession.levels[0].rooms[0].items.push(item)
-console.log(gameSession);
+//gameSession.levels.push(level1)
+//gameSession.levels[0].rooms.push(room)
+//gameSession.levels[0].rooms[0].enemies.push(enemy)
+//gameSession.levels[0].rooms[0].items.push(item)
+//console.log(gameSession);
 //console.log(gameSession.levels[0].rooms); //Путь к комнатам
 //console.log(gameSession.levels[0].rooms[0]); //Путь к противникам
 //console.log(gameSession.levels[0].rooms[0]); //Путь к предметам
 
 
+
+
+
+let levels = []
