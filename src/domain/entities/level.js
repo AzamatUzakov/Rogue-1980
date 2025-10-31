@@ -2,7 +2,6 @@ import { gameSession } from "./gameSession.js";
 
 
 export function createLevel(option) {
-
     gameSession.levels.push(option)
 }
 

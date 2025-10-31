@@ -1,11 +1,11 @@
 import { gameSession } from "./gameSession.js";
 
-export function createCorridor(option) {
-    console.log(option);
+export function createCorridor(option, levelIndex) {
+    gameSession.levels[levelIndex].corridors.push(option)
 }
 
 
-gameSession.levels.forEach(element => {
+gameSession.levels.forEach((element, levelIndex) => {
     const rooms = element.rooms;
     const lastIndex = rooms.length - 1;
 
@@ -14,7 +14,7 @@ gameSession.levels.forEach(element => {
 
             const option = {
                 id: room.id,
-                from: room.id,
+                from: room.id, 
                 to: room.id + 1,
                 path: [
                     { x: 0, y: 5 },
@@ -22,7 +22,7 @@ gameSession.levels.forEach(element => {
                     { x: 2, y: 5 }], // координаты по которым можно пройти
                 locked: false
             }
-            createCorridor(option)
+            createCorridor(option, levelIndex)
         }
     })
 });
