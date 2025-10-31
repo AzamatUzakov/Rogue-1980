@@ -27,9 +27,16 @@ export function attack(attacker, defender) {
   // 5. Если противник умер
   if (defender.currentHealth <= 0) {
     console.log(`${defender.name ?? "Противник"} повержен!`);
+
+    // подбираем награду
+    const loot = Math.floor(Math.random() * 10) + 1; // лут от 1 до 10 монет
+
+    if (loot > 0) {
+      attacker.gold = (attacker.gold ?? 0) + loot;
+      console.log(`💰 ${attacker.name} получил ${loot} золота!`);
+    }
   }
 }
-
 // использование в другом файле:
 
 // import { createCharacter } from "./character.js";
