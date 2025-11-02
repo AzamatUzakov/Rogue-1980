@@ -19,8 +19,7 @@ export function attack(attacker, defender) {
   // 4. Наносим урон противнику
   defender.takeDamage(totalDamage);
   console.log(
-    `${attacker.name ?? "Атакующий"} попал по ${
-      defender.name ?? "цели"
+    `${attacker.name ?? "Атакующий"} попал по ${defender.name ?? "цели"
     } на ${totalDamage} урона!`
   );
 
