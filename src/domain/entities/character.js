@@ -10,6 +10,7 @@ export function createCharacter(options) {
         dexterity: options.dexterity ?? 5,
         weapon: options.weapon ?? null,
         currentRoomId: 0,
+        position: options.position ?? { x: 0, y: 0 },
         // 🎒 новое
         backpack: options.backpack ?? [],
         gold: options.gold ?? 0,
@@ -124,6 +125,14 @@ export function createCharacter(options) {
             }
 
             this.currentRoomId = nextLevel.startRoomId
+            const startRoom = nextLevel.rooms.find(r => r.id === this.currentRoomId);
+            if (startRoom) {
+                // случайная позиция внутри стартовой комнаты
+                this.position = {
+                    x: Math.floor(Math.random() * startRoom.size.width),
+                    y: Math.floor(Math.random() * startRoom.size.height)
+                };
+            }
             console.log(`📍 Вы появились в комнате №${this.currentRoomId} уровня ${this.level}.`);
         },
 

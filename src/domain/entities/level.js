@@ -1,48 +1,116 @@
 import { gameSession } from "./gameSession.js";
+import { createEnemy } from "./enemy.js";
+import { createItem } from "./item.js";
 
-
-export function createLevel(option) {
-    return option
-}
-for (let i = 1; i <= 21; i++) {
-    const level = createLevel({
-        id: i,
+// createLevel: создаёт пустую структуру уровня с базовыми полями
+export function createLevel(options) {
+    return {
+        id: options.id,
         rooms: [],
         corridors: [],
-        startRoomId: 1,
-        exitRoomId: 9,
-    });
+        startRoomId: 0,
+        exitRoomId: 8,
+    };
+}
 
-    const enemyCount = 2 + i;      // больше врагов с каждым уровнем
-    const foodCount = Math.max(5 - Math.floor(i / 3), 1); // меньше еды
-    const lootMultiplier = 1 + i * 0.1; // больше сокровищ
+// generateRooms: создаёт 9 комнат и помечает стартовую и выход
+function generateRooms(level) {
+    for (let roomId = 0; roomId < 9; roomId++) {
+        level.rooms.push({
+            id: roomId,
+            position: { x: roomId % 3, y: Math.floor(roomId / 3) },
+            size: { width: 10, height: 8 },
+            enemies: [],
+            items: [],
+            isStart: roomId === level.startRoomId,
+            isExit: roomId === level.exitRoomId,
+        });
+    }
+}
 
-    // добавление врагов и предметы в комнаты
-    level.rooms.forEach(room => {
-        if (!room.isStart) {
-            // враги
-            for (let e = 0; e < enemyCount; e++) {
-                room.enemies.push({
-                    id: e,
-                    type: "Zombie",
-                    health: 10 + i * 5,
-                    maxHealth: 10 + i * 5,
-                    strength: 2 + i,
-                    loot: Math.floor(3 * lootMultiplier),
-                });
+// generateConnectedCorridors: соединяет комнаты в связный граф (3x3 решётка)
+function generateConnectedCorridors(level) {
+    const toId = (x, y) => y * 3 + x;
+    for (let y = 0; y < 3; y++) {
+        for (let x = 0; x < 3; x++) {
+            const from = toId(x, y);
+            if (x < 2) {
+                level.corridors.push({ from, to: toId(x + 1, y), locked: false });
             }
+            if (y < 2) {
+                level.corridors.push({ from, to: toId(x, y + 1), locked: false });
+            }
+        }
+    }
+}
 
-            // еда
-            for (let f = 0; f < foodCount; f++) {
-                room.items.push({
-                    id: f,
+// populateRooms: наполняет комнаты врагами/предметами с ростом сложности и лута
+function populateRooms(level, levelIndex) {
+    const difficulty = levelIndex; // 1..21
+    const enemyCountBase = 1 + Math.floor(difficulty / 3);
+    const foodCountBase = Math.max(4 - Math.floor(difficulty / 4), 0);
+    const lootMultiplier = 1 + Math.floor(difficulty / 5);
+
+    level.rooms.forEach((room) => {
+        if (room.isStart) return; // стартовая комната пустая
+
+        const enemiesInRoom = enemyCountBase + Math.floor(Math.random() * 2); // +0..1
+        for (let i = 0; i < enemiesInRoom; i++) {
+            room.enemies.push(
+                createEnemy({
+                    name: `Enemy_L${difficulty}_${room.id}_${i}`,
+                    type: "Zombie",
+                    maxHealth: 10 + difficulty * 3,
+                    currentHealth: 10 + difficulty * 3,
+                    strength: 2 + Math.floor(difficulty / 2),
+                    dexterity: 2 + Math.floor(difficulty / 6),
+                    agroRange: 2 + Math.floor(difficulty / 7),
+                    position: { x: 0, y: 0 },
+                    movePattern: "idle",
+                })
+            );
+        }
+
+        const foodsInRoom = foodCountBase + (Math.random() < 0.3 ? 1 : 0);
+        for (let f = 0; f < foodsInRoom; f++) {
+            room.items.push(
+                createItem({
+                    id: `${level.id}-${room.id}-F${f}`,
                     type: "Food",
                     subtype: "Apple",
                     health: 5,
-                });
-            }
+                })
+            );
+        }
+
+        const treasures = Math.random() < 0.6 ? 1 : 0;
+        for (let t = 0; t < treasures; t++) {
+            room.items.push(
+                createItem({
+                    id: `${level.id}-${room.id}-T${t}`,
+                    type: "Treasure",
+                    subtype: "Gold",
+                    value: (5 + Math.floor(Math.random() * 6)) * lootMultiplier,
+                })
+            );
         }
     });
+}
 
-    gameSession.levels.push(level);
+// generateLevel: собирает комнаты, коридоры и наполнение для конкретного уровня
+export function generateLevel(levelIndex) {
+    const level = createLevel({ id: levelIndex });
+    generateRooms(level);
+    generateConnectedCorridors(level);
+    populateRooms(level, levelIndex);
+    return level;
+}
+
+// initializeLevels: создаёт и регистрирует 21 уровень в сессии
+export function initializeLevels() {
+    gameSession.levels = [];
+    for (let i = 1; i <= 21; i++) {
+        const level = generateLevel(i);
+        gameSession.levels.push(level);
+    }
 }

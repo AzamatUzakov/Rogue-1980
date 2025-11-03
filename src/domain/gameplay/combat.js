@@ -27,8 +27,10 @@ export function attack(attacker, defender) {
   if (defender.currentHealth <= 0) {
     console.log(`${defender.name ?? "Противник"} повержен!`);
 
-    // подбираем награду
-    const loot = Math.floor(Math.random() * 10) + 1; // лут от 1 до 10 монет
+    // подбираем награду — масштабируем по уровню атакующего
+    const level = attacker.level ?? 1;
+    const multiplier = 1 + Math.floor((level - 1) / 5); // растёт каждые 5 уровней
+    const loot = (Math.floor(Math.random() * 10) + 1) * multiplier;
 
     if (loot > 0) {
       attacker.gold = (attacker.gold ?? 0) + loot;
