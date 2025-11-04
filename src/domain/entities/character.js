@@ -228,9 +228,44 @@ export function createCharacter(options) {
             const room = currentLevel.rooms.find(r => r.id === this.currentRoomId);
             if (!room) return false;
 
-            const nx = Math.max(0, Math.min(room.size.width - 1, this.position.x + dx));
-            const ny = Math.max(0, Math.min(room.size.height - 1, this.position.y + dy));
-            this.position = { x: nx, y: ny };
+            const wantX = this.position.x + dx;
+            const wantY = this.position.y + dy;
+            const insideX = wantX >= 0 && wantX < room.size.width;
+            const insideY = wantY >= 0 && wantY < room.size.height;
+
+            if (insideX && insideY) {
+                // обычное перемещение внутри комнаты
+                this.position = { x: wantX, y: wantY };
+            } else {
+                // попытка выйти за пределы комнаты — проверим коридор и переход в соседнюю
+                const globalX = room.position.x + this.position.x + dx;
+                const globalY = room.position.y + this.position.y + dy;
+
+                // найдём коридор, чья линия содержит требуемую клетку рядом
+                const corridors = currentLevel.corridors.filter(c => c.from === room.id || c.to === room.id);
+                const corridor = corridors.find(c => c.path?.some(p => p.x === globalX && p.y === globalY));
+                if (corridor) {
+                    const targetRoomId = corridor.from === room.id ? corridor.to : corridor.from;
+                    const targetRoom = currentLevel.rooms.find(r => r.id === targetRoomId);
+                    if (targetRoom) {
+                        // точка входа: ближайшая точка пути, которая лежит внутри целевой комнаты
+                        let entry = null;
+                        for (const p of corridor.path) {
+                            const inside = p.x >= targetRoom.position.x && p.x < targetRoom.position.x + targetRoom.size.width &&
+                                p.y >= targetRoom.position.y && p.y < targetRoom.position.y + targetRoom.size.height;
+                            if (inside) { entry = p; break; }
+                        }
+                        // если не нашли — поставим у границы в направлении движения
+                        if (!entry) entry = { x: Math.max(targetRoom.position.x, Math.min(targetRoom.position.x + targetRoom.size.width - 1, globalX)),
+                            y: Math.max(targetRoom.position.y, Math.min(targetRoom.position.y + targetRoom.size.height - 1, globalY)) };
+                        this.currentRoomId = targetRoomId;
+                        this.position = { x: entry.x - targetRoom.position.x, y: entry.y - targetRoom.position.y };
+                        return true;
+                    }
+                }
+                // коридор не найден — остаёмся на месте
+                return false;
+            }
 
             // Подбор предметов по наступанию на клетку
             let remaining = [];
@@ -244,7 +279,7 @@ export function createCharacter(options) {
             room.items = remaining;
 
             // Если наступили на клетку с врагом — инициация боя (один удар от игрока)
-            const enemy = room.enemies.find(e => e.position && e.position.x === nx && e.position.y === ny && e.currentHealth > 0);
+            const enemy = room.enemies.find(e => e.position && e.position.x === this.position.x && e.position.y === this.position.y && e.currentHealth > 0);
             if (enemy) {
                 // Если это призрак и он невидим — становится видимым, бой со следующего удара
                 if (enemy.type === 'Ghost' && enemy._invisible) {

@@ -1,6 +1,7 @@
 import { gameSession } from "./gameSession.js";
 import { createEnemy } from "./enemy.js";
 import { createItem } from "./item.js";
+import { generateConnectedLevel } from "../world/generator.js";
 
 // createLevel: создаёт пустую структуру уровня с базовыми полями
 export function createLevel(options) {
@@ -15,33 +16,12 @@ export function createLevel(options) {
 
 // generateRooms: создаёт 9 комнат и помечает стартовую и выход
 function generateRooms(level) {
-    for (let roomId = 0; roomId < 9; roomId++) {
-        level.rooms.push({
-            id: roomId,
-            position: { x: roomId % 3, y: Math.floor(roomId / 3) },
-            size: { width: 10, height: 8 },
-            enemies: [],
-            items: [],
-            isStart: roomId === level.startRoomId,
-            isExit: roomId === level.exitRoomId,
-        });
-    }
+    // Секция перенесена в генератор мира; оставлено для совместимости вызовов
 }
 
 // generateConnectedCorridors: соединяет комнаты в связный граф (3x3 решётка)
 function generateConnectedCorridors(level) {
-    const toId = (x, y) => y * 3 + x;
-    for (let y = 0; y < 3; y++) {
-        for (let x = 0; x < 3; x++) {
-            const from = toId(x, y);
-            if (x < 2) {
-                level.corridors.push({ from, to: toId(x + 1, y), locked: false });
-            }
-            if (y < 2) {
-                level.corridors.push({ from, to: toId(x, y + 1), locked: false });
-            }
-        }
-    }
+    // Коридоры формируются генератором мира
 }
 
 // populateRooms: наполняет комнаты врагами/предметами с ростом сложности и лута
@@ -131,9 +111,17 @@ function populateRooms(level, levelIndex) {
 
 // generateLevel: собирает комнаты, коридоры и наполнение для конкретного уровня
 export function generateLevel(levelIndex) {
-    const level = createLevel({ id: levelIndex });
-    generateRooms(level);
-    generateConnectedCorridors(level);
+    // Генерация уровня с делением на 9 секций, случайными комнатами и коридорами с путями
+    const generated = generateConnectedLevel(levelIndex);
+    const level = {
+        id: generated.id,
+        rooms: generated.rooms,
+        corridors: generated.corridors,
+        startRoomId: generated.startRoomId,
+        exitRoomId: generated.exitRoomId,
+        width: generated.width,
+        height: generated.height,
+    };
     populateRooms(level, levelIndex);
     return level;
 }

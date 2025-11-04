@@ -2,6 +2,8 @@
 import { attack } from "./combat.js";
 import { gameSession } from "../entities/gameSession.js";
 import { highScores } from "../entities/highscores.js";
+import { makeSerializableSession, saveState } from "../../datalayer/saveManager.js";
+import { appendRunStat } from "../../datalayer/statsManager.js";
 
 export function createTurnSystem() {
     const turnSystem = {
@@ -261,6 +263,10 @@ export function createTurnSystem() {
                 character.goToNextLevel();
                 this.currentLevelIndex = character.level - 1;
 
+                // сохраняем прогресс после перехода на следующий уровень
+                const snapshot = makeSerializableSession(gameSession);
+                saveState(snapshot);
+
                 // Если прошли все уровни
                 if (character.level > 21) {
                     console.log("🎉 Победа! Вы прошли все 21 уровень!");
@@ -284,6 +290,12 @@ export function createTurnSystem() {
                 console.log("🏆 ПОБЕДА! Вы прошли все 21 уровень!");
             } else {
                 console.log("💀 ГAME OVER");
+                // сохраняем статистику прохождения
+                appendRunStat({
+                    player: gameSession.player.name,
+                    level: gameSession.player.level,
+                    treasures: gameSession.player.gold,
+                });
                 // Автоматический рестарт через 2 секунды
                 setTimeout(() => {
                     gameSession.player.die();
