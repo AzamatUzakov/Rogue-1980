@@ -6,6 +6,12 @@ export function attack(attacker, defender) {
   );
 
   // 2. Проверяем, попал ли атакующий
+  // Особый случай: первый удар по вампиру всегда промах
+  if (defender.type === 'Vampire' && defender._firstHitIgnored !== true) {
+    defender._firstHitIgnored = true;
+    console.log(`${attacker.name ?? "Атакующий"} промахнулся (первый удар по вампиру)!`);
+    return;
+  }
   if (Math.random() > hitChance) {
     console.log(`${attacker.name ?? "Персонаж"} промахнулся!`);
     return;
@@ -27,10 +33,11 @@ export function attack(attacker, defender) {
   if (defender.currentHealth <= 0) {
     console.log(`${defender.name ?? "Противник"} повержен!`);
 
-    // подбираем награду — масштабируем по уровню атакующего
-    const level = attacker.level ?? 1;
-    const multiplier = 1 + Math.floor((level - 1) / 5); // растёт каждые 5 уровней
-    const loot = (Math.floor(Math.random() * 10) + 1) * multiplier;
+    // подбираем награду — зависит от параметров защищавшегося врага
+    const hostility = defender.agroRange ?? 1; // простая замена для враждебности
+    const statScore = (defender.strength ?? 0) + (defender.dexterity ?? 0) + Math.floor((defender.maxHealth ?? 0) / 10);
+    const base = 1 + Math.floor(Math.random() * 5);
+    const loot = Math.max(1, base + Math.floor(statScore / 5) + Math.floor(hostility / 2));
 
     if (loot > 0) {
       attacker.gold = (attacker.gold ?? 0) + loot;

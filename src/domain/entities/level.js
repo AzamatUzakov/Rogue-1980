@@ -65,7 +65,7 @@ function populateRooms(level, levelIndex) {
                     strength: 2 + Math.floor(difficulty / 2),
                     dexterity: 2 + Math.floor(difficulty / 6),
                     agroRange: 2 + Math.floor(difficulty / 7),
-                    position: { x: 0, y: 0 },
+                    position: { x: Math.floor(Math.random() * room.size.width), y: Math.floor(Math.random() * room.size.height) },
                     movePattern: "idle",
                 })
             );
@@ -79,18 +79,50 @@ function populateRooms(level, levelIndex) {
                     type: "Food",
                     subtype: "Apple",
                     health: 5,
+                    position: { x: Math.floor(Math.random() * room.size.width), y: Math.floor(Math.random() * room.size.height) },
                 })
             );
         }
 
-        const treasures = Math.random() < 0.6 ? 1 : 0;
-        for (let t = 0; t < treasures; t++) {
+        // Добавим шанс лёгкого оружия (без сокровищ в комнатах — сокровища только с врагов)
+        if (Math.random() < 0.2) {
             room.items.push(
                 createItem({
-                    id: `${level.id}-${room.id}-T${t}`,
-                    type: "Treasure",
-                    subtype: "Gold",
-                    value: (5 + Math.floor(Math.random() * 6)) * lootMultiplier,
+                    id: `${level.id}-${room.id}-W0`,
+                    type: "Weapon",
+                    subtype: "Sword",
+                    strength: 2 + Math.floor(difficulty / 5),
+                    damage: 3 + Math.floor(difficulty / 6),
+                    position: { x: Math.floor(Math.random() * room.size.width), y: Math.floor(Math.random() * room.size.height) },
+                })
+            );
+        }
+
+        // Шанс на эликсир (временный баф)
+        if (Math.random() < 0.15) {
+            room.items.push(
+                createItem({
+                    id: `${level.id}-${room.id}-E0`,
+                    type: "Elixir",
+                    subtype: "DexterityElixir",
+                    stat: "dexterity",
+                    amount: 2,
+                    duration: 5,
+                    position: { x: Math.floor(Math.random() * room.size.width), y: Math.floor(Math.random() * room.size.height) },
+                })
+            );
+        }
+
+        // Шанс на свиток (постоянный баф)
+        if (Math.random() < 0.15) {
+            room.items.push(
+                createItem({
+                    id: `${level.id}-${room.id}-S0`,
+                    type: "Scroll",
+                    subtype: "HealthScroll",
+                    stat: "maxHealth",
+                    amount: 5,
+                    position: { x: Math.floor(Math.random() * room.size.width), y: Math.floor(Math.random() * room.size.height) },
                 })
             );
         }

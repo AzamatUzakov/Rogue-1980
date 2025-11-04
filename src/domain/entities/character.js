@@ -1,4 +1,6 @@
 import { gameSession } from "./gameSession.js";
+import { createBackpack } from "./backpack.js";
+import { attack } from "../gameplay/combat.js";
 
 export function createCharacter(options) {
     const character = {
@@ -14,6 +16,8 @@ export function createCharacter(options) {
         // 🎒 новое
         backpack: options.backpack ?? [],
         gold: options.gold ?? 0,
+        // ⚗️ активные временные эффекты эликсиров
+        activeEffects: [],
 
         // --- метод: получить урон ---
         takeDamage(amount) {
@@ -50,7 +54,7 @@ export function createCharacter(options) {
             // 🔁 Сброс состояния игрока
             this.level = 1;
             this.currentHealth = this.maxHealth;
-            this.backpack = [];
+            this.backpack = createBackpack({ items: [], maxPerType: 9 });
             this.gold = 0;
             this.currentRoomId = 0;
 
@@ -98,19 +102,64 @@ export function createCharacter(options) {
 
             const item = this.backpack[itemIndex];
 
-            if (item.type === "Food") {
-                this.heal(item.health);
-                console.log(`🍎 Вы съели ${item.subtype}.`);
-            } else if (item.type === "Weapon") {
-                this.weapon = item;
-                console.log(`🗡️ Вы экипировали ${item.subtype}.`);
-            } else if (item.type === "Treasure") {
-                this.gold += item.value;
-                console.log(`💰 Вы подобрали сокровище: +${item.value} золота.`);
-            }
+            // делегируем применению предмета собственную логику
+            item.use(this);
 
             // удалить использованный предмет
+            // Оружие не тратится, но мы удаляем из рюкзака экземпляр, т.к. он экипирован
             this.backpack.splice(itemIndex, 1);
+        },
+
+        // --- экиповать оружие и уронить предыдущее на пол ---
+        equipWeapon(newWeapon) {
+            if (this.weapon) {
+                const currentLevel = gameSession.levels[this.level - 1];
+                const room = currentLevel.rooms.find(r => r.id === this.currentRoomId);
+                if (room) {
+                    // Положим старое оружие на соседнюю клетку
+                    const dirs = [
+                        { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }
+                    ];
+                    const d = dirs[Math.floor(Math.random() * dirs.length)];
+                    const dropX = Math.max(0, Math.min(room.size.width - 1, this.position.x + d.x));
+                    const dropY = Math.max(0, Math.min(room.size.height - 1, this.position.y + d.y));
+                    this.weapon.position = { x: dropX, y: dropY };
+                    room.items.push(this.weapon);
+                }
+            }
+            this.weapon = newWeapon;
+        },
+
+        // --- применить временный эффект (эликсир) ---
+        applyTemporaryEffect({ stat, amount, turns }) {
+            this[stat] = (this[stat] ?? 0) + amount;
+            this.activeEffects.push({ stat, amount, turns });
+        },
+
+        // --- применить постоянный буст (свиток) ---
+        applyPermanentBoost({ stat, amount }) {
+            this[stat] = (this[stat] ?? 0) + amount;
+            if (stat === "maxHealth") {
+                // При росте максимального здоровья — сразу растёт текущее
+                this.currentHealth += amount;
+            }
+        },
+
+        // --- тик эффектов: уменьшаем длительность и откатываем бафы ---
+        tickEffects() {
+            if (!this.activeEffects.length) return;
+            this.activeEffects.forEach(e => (e.turns -= 1));
+            const expired = this.activeEffects.filter(e => e.turns <= 0);
+            // откатываем истёкшие эффекты
+            expired.forEach(e => {
+                this[e.stat] = (this[e.stat] ?? 0) - e.amount;
+                if (e.stat === "maxHealth") {
+                    // Клэмпим здоровье и страхуемся на минимальное 1, если стало ≤ 0
+                    if (this.currentHealth > this.maxHealth) this.currentHealth = this.maxHealth;
+                    if (this.currentHealth <= 0) this.currentHealth = 1;
+                }
+            });
+            this.activeEffects = this.activeEffects.filter(e => e.turns > 0);
         },
 
         // --- переход на новый уровень ---
@@ -169,7 +218,44 @@ export function createCharacter(options) {
 
             if (room.items.length > 0) {
                 console.log(`🎁 В комнате есть предметы: ${room.items.map(i => i.subtype).join(", ")}`);
+                // Предметы теперь лежат на клетках — автоподбор будет при шаге по клетке
             }
+        },
+
+        // --- перемещение внутри комнаты на dx,dy; автоподбор и контакт-атака ---
+        moveInRoom(dx, dy) {
+            const currentLevel = gameSession.levels[this.level - 1];
+            const room = currentLevel.rooms.find(r => r.id === this.currentRoomId);
+            if (!room) return false;
+
+            const nx = Math.max(0, Math.min(room.size.width - 1, this.position.x + dx));
+            const ny = Math.max(0, Math.min(room.size.height - 1, this.position.y + dy));
+            this.position = { x: nx, y: ny };
+
+            // Подбор предметов по наступанию на клетку
+            let remaining = [];
+            for (const it of room.items) {
+                if (it.position && it.position.x === nx && it.position.y === ny) {
+                    this.backpack.add(it);
+                } else {
+                    remaining.push(it);
+                }
+            }
+            room.items = remaining;
+
+            // Если наступили на клетку с врагом — инициация боя (один удар от игрока)
+            const enemy = room.enemies.find(e => e.position && e.position.x === nx && e.position.y === ny && e.currentHealth > 0);
+            if (enemy) {
+                // Если это призрак и он невидим — становится видимым, бой со следующего удара
+                if (enemy.type === 'Ghost' && enemy._invisible) {
+                    enemy._invisible = false;
+                    console.log("👻 Привидение проявилось!");
+                    return true;
+                }
+                // простой контакт-бой: один удар игрока в свой ход
+                attack(this, enemy);
+            }
+            return true;
         },
 
     };

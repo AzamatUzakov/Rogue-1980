@@ -29,3 +29,6 @@ export const gameSession = createGameSession({
   startTime: Date.now(),
   isActive: true,
 });
+
+// Делаем доступным для простых AI через globalThis
+globalThis.gameSession = gameSession;
