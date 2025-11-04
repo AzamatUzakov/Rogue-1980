@@ -10,6 +10,11 @@ export function createEnemy(options) {
     agroRange: options.agroRange ?? 3, // радиус, с которого враг агрится
     position: options.position ?? { x: 0, y: 0 }, // позиция на карте
     movePattern: options.movePattern ?? "idle", // idle, patrol, chase
+    _firstHitIgnored: false, // для вампира: первый удар по нему — промах
+    _restTurns: 0,          // для огра: отдых после атаки
+    _counterNext: false,    // для огра: гарантированная контратака после отдыха
+    _diagDir: 1,            // для змей-мага: смена диагонального направления
+    _invisible: options.type === 'Ghost', // призрак невидим до начала боя
 
     // --- метод: показать здоровье ---
     showHealth() {
@@ -47,7 +52,7 @@ export function createEnemy(options) {
     },
 
     // --- метод: движение ---
-    move() {
+    move(room) {
       if (this.movePattern === "idle") return;
 
       if (this.movePattern === "patrol") {
@@ -57,7 +62,43 @@ export function createEnemy(options) {
       }
 
       if (this.movePattern === "chase") {
-        console.log(`${this.name} бежит к игроку!`);
+        // Простой погоня: один шаг к игроку по оси с наибольшим расстоянием
+        const player = globalThis?.gameSession?.player; // может быть undefined вне рантайма
+        if (!player) {
+          console.log(`${this.name} бежит к игроку!`);
+          return;
+        }
+        const dx = Math.sign(player.position.x - this.position.x);
+        const dy = Math.sign(player.position.y - this.position.y);
+        if (this.type === "Ogre") {
+          // Огром делаем 2 клетки по основной оси
+          if (Math.abs(player.position.x - this.position.x) >= Math.abs(player.position.y - this.position.y)) {
+            this.position.x += 2 * dx;
+          } else {
+            this.position.y += 2 * dy;
+          }
+        } else if (this.type === "SnakeMage") {
+          // змей-маг ходит по диагонали
+          this.position.x += this._diagDir * (dx || 1);
+          this.position.y += this._diagDir * (dy || 1);
+          this._diagDir *= -1; // меняем сторону каждый ход
+        } else if (this.type === "Ghost") {
+          // привидение иногда телепортируется
+          if (Math.random() < 0.3) {
+            this.position.x += (Math.random() < 0.5 ? -1 : 1);
+            this.position.y += (Math.random() < 0.5 ? -1 : 1);
+          } else {
+            if (Math.abs(player.position.x - this.position.x) >= Math.abs(player.position.y - this.position.y)) this.position.x += dx; else this.position.y += dy;
+          }
+        } else {
+          if (Math.abs(player.position.x - this.position.x) >= Math.abs(player.position.y - this.position.y)) this.position.x += dx; else this.position.y += dy;
+        }
+      }
+
+      // Клэмпим позицию в пределах комнаты, если передана
+      if (room && room.size) {
+        this.position.x = Math.max(0, Math.min(room.size.width - 1, this.position.x));
+        this.position.y = Math.max(0, Math.min(room.size.height - 1, this.position.y));
       }
     },
   };

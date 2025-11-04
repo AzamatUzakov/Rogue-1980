@@ -8,12 +8,23 @@ export function createTurnSystem() {
         isPlayerTurn: true,
         currentLevelIndex: 0,
         turnCount: 0,
+        playerAsleepTurns: 0, // счётчик сна игрока (задерживает ход)
 
         // Главная функция хода игрока
         playerAction(actionType, data) {
             if (!this.isPlayerTurn) {
                 console.log("🚫 Сейчас не ваш ход!");
                 return false;
+            }
+
+            // Если игрок усыплён — пропускает ход
+            if (this.playerAsleepTurns > 0) {
+                console.log("😴 Вы усыплены и пропускаете ход");
+                this.playerAsleepTurns -= 1;
+                this.isPlayerTurn = false;
+                this.enemyTurn();
+                this.turnCount++;
+                return true;
             }
 
             console.log(`🎮 Ход ${this.turnCount + 1}: Игрок выполняет ${actionType}`);
@@ -23,6 +34,9 @@ export function createTurnSystem() {
             switch (actionType) {
                 case 'move':
                     actionSuccess = this.executePlayerMove(data.roomId);
+                    break;
+                case 'moveInRoom':
+                    actionSuccess = this.executePlayerMoveInRoom(data.dx, data.dy);
                     break;
                 case 'attack':
                     actionSuccess = this.executePlayerAttack(data.enemyId);
@@ -51,6 +65,11 @@ export function createTurnSystem() {
         executePlayerMove(targetRoomId) {
             const character = gameSession.player;
             return character.moveToRoom(targetRoomId);
+        },
+
+        executePlayerMoveInRoom(dx, dy) {
+            const character = gameSession.player;
+            return character.moveInRoom(dx, dy);
         },
 
         executePlayerAttack(enemyId) {
@@ -124,6 +143,9 @@ export function createTurnSystem() {
             this.checkLevelCompletion();
             this.checkPlayerDeath();
 
+            // Тикаем временные эффекты игрока
+            gameSession.player.tickEffects();
+
             // Возвращаем ход игроку
             this.isPlayerTurn = true;
             console.log("🎮 Ваш ход!");
@@ -131,16 +153,97 @@ export function createTurnSystem() {
 
         executeEnemyAction(enemy, room) {
             const character = gameSession.player;
+            const currentLevel = gameSession.levels[this.currentLevelIndex];
 
             // Если враг в той же комнате, что и игрок - атакует
             if (room.id === character.currentRoomId) {
                 console.log(`⚔️ ${enemy.name} атакует игрока!`);
+                // Особое поведение огра: отдых после атаки
+                if (enemy._restTurns && enemy._restTurns > 0) {
+                    enemy._restTurns -= 1;
+                    console.log(`${enemy.name} отдыхает.`);
+                    return;
+                }
+                // Если у огра помечена гарантированная контратака — бьёт дважды
+                if (enemy._counterNext) {
+                    attack(enemy, character);
+                    enemy._counterNext = false;
+                }
                 attack(enemy, character);
+                // После успешной атаки некоторые типы накладывают эффекты
+                if (enemy.type === "Vampire") {
+                    // Вампир отнимает часть максимального HP
+                    character.maxHealth = Math.max(1, character.maxHealth - 1);
+                    if (character.currentHealth > character.maxHealth) character.currentHealth = character.maxHealth;
+                }
+                if (enemy.type === "Ogre") {
+                    // Огр отдыхает один ход после атаки
+                    enemy._restTurns = 1;
+                    enemy._counterNext = true; // затем гарантированно контратакует
+                }
+                if (enemy.type === "SnakeMage") {
+                    // Шанс усыпить игрока на 1 ход
+                    if (Math.random() < 0.3) {
+                        this.playerAsleepTurns = 1;
+                        console.log("💤 Вас усыпили на 1 ход!");
+                    }
+                }
             } else {
-                // Иначе двигается (упрощенная логика)
+                // Иначе двигается. При агро — идёт к игроку по комнатам, иначе по паттерну
                 enemy.checkAggro(character.position);
-                enemy.move();
+                if (enemy.movePattern === 'chase') {
+                    const path = this.shortestRoomPath(currentLevel, room.id, character.currentRoomId);
+                    if (path && path.length > 1) {
+                        const nextRoomId = path[1];
+                        const nextRoom = currentLevel.rooms.find(r => r.id === nextRoomId);
+                        if (nextRoom) {
+                            // переносим врага в соседнюю комнату по коридору
+                            const idx = room.enemies.indexOf(enemy);
+                            if (idx > -1) room.enemies.splice(idx, 1);
+                            enemy.position = { x: Math.floor(Math.random() * nextRoom.size.width), y: Math.floor(Math.random() * nextRoom.size.height) };
+                            nextRoom.enemies.push(enemy);
+                            return;
+                        }
+                    }
+                }
+                // если пути нет — двигается внутри комнаты по своему паттерну
+                enemy.move(room);
             }
+        },
+
+        // Поиск кратчайшего пути по комнатам с использованием коридоров
+        shortestRoomPath(level, startId, goalId) {
+            if (startId === goalId) return [startId];
+            const graph = new Map();
+            level.corridors.forEach(c => {
+                if (!graph.has(c.from)) graph.set(c.from, []);
+                if (!graph.has(c.to)) graph.set(c.to, []);
+                if (!c.locked) {
+                    graph.get(c.from).push(c.to);
+                    graph.get(c.to).push(c.from);
+                }
+            });
+            const queue = [startId];
+            const prev = new Map();
+            const visited = new Set([startId]);
+            while (queue.length) {
+                const cur = queue.shift();
+                const neighbors = graph.get(cur) || [];
+                for (const nb of neighbors) {
+                    if (visited.has(nb)) continue;
+                    visited.add(nb);
+                    prev.set(nb, cur);
+                    if (nb === goalId) {
+                        // восстановим путь
+                        const path = [goalId];
+                        let p = goalId;
+                        while (prev.has(p)) { p = prev.get(p); path.unshift(p); }
+                        return path;
+                    }
+                    queue.push(nb);
+                }
+            }
+            return null;
         },
 
         getCurrentRoom() {

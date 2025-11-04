@@ -1,4 +1,4 @@
-// highscores.js
+
 // Определяем кроссплатформенное хранилище: localStorage в браузере или JSON-файл в Node
 let nodeFs = null;
 let nodePath = null;
@@ -29,7 +29,7 @@ function loadFromStorage() {
             const raw = nodeFs.default.readFileSync(storageFilePath, 'utf-8');
             return JSON.parse(raw || '[]');
         }
-    } catch {}
+    } catch { }
     return [];
 }
 
@@ -41,7 +41,7 @@ function saveToStorage(scores) {
     }
     try {
         nodeFs.default.writeFileSync(storageFilePath, JSON.stringify(scores, null, 2), 'utf-8');
-    } catch {}
+    } catch { }
 }
 
 export function createHighScores() {
