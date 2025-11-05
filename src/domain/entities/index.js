@@ -11,18 +11,22 @@ export function moveToRoom(roomId) {
     gameplay.tickPlayer('move', { roomId });
 }
 
+//атака врага
 export function attackEnemy(enemyId) {
     gameplay.tickPlayer('attack', { enemyId });
 }
 
+//предметы 
 export function useItem(itemId) {
     gameplay.tickPlayer('useItem', { itemId });
 }
 
+//поднятие предмета
 export function pickupItem(itemId) {
     gameplay.tickPlayer('pickup', { itemId });
 }
 
+//показ очков
 export function showHighScores() {
     return highScores.getScores();
 }

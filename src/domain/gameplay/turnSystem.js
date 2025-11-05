@@ -64,17 +64,17 @@ export function createTurnSystem() {
             return actionSuccess;
         },
 
-        executePlayerMove(targetRoomId) {
+        executePlayerMove(targetRoomId) {//пермещение игрока
             const character = gameSession.player;
             return character.moveToRoom(targetRoomId);
         },
 
-        executePlayerMoveInRoom(dx, dy) {
+        executePlayerMoveInRoom(dx, dy) {//перемещение по комнате
             const character = gameSession.player;
             return character.moveInRoom(dx, dy);
         },
 
-        executePlayerAttack(enemyId) {
+        executePlayerAttack(enemyId) {//атака игрока
             const character = gameSession.player;
             const currentRoom = this.getCurrentRoom();
             const enemy = currentRoom.enemies.find(e => e.id === enemyId);
@@ -96,13 +96,13 @@ export function createTurnSystem() {
             return false;
         },
 
-        executePlayerUseItem(itemId) {
+        executePlayerUseItem(itemId) {//использование предмета
             const character = gameSession.player;
             character.useItem(itemId);
             return true;
         },
 
-        executePlayerPickup(itemId) {
+        executePlayerPickup(itemId) {//подбор предмета
             const character = gameSession.player;
             const currentRoom = this.getCurrentRoom();
             const itemIndex = currentRoom.items.findIndex(i => i.id === itemId);
@@ -119,12 +119,12 @@ export function createTurnSystem() {
             return false;
         },
 
-        executePlayerWait() {
+        executePlayerWait() {//ожидание игрока
             console.log("⏳ Игрок пропускает ход");
             return true;
         },
 
-        enemyTurn() {
+        enemyTurn() {//ход противника
             console.log("🎭 Ход противников...");
             const currentLevel = gameSession.levels[this.currentLevelIndex];
             let enemyActions = 0;
@@ -153,7 +153,7 @@ export function createTurnSystem() {
             console.log("🎮 Ваш ход!");
         },
 
-        executeEnemyAction(enemy, room) {
+        executeEnemyAction(enemy, room) {//вражеское действие
             const character = gameSession.player;
             const currentLevel = gameSession.levels[this.currentLevelIndex];
 
@@ -225,7 +225,7 @@ export function createTurnSystem() {
                     graph.get(c.to).push(c.from);
                 }
             });
-            const queue = [startId];
+            const queue = [startId];//Алгоритм находит кратчайший путь от вершины startId до вершины goalId
             const prev = new Map();
             const visited = new Set([startId]);
             while (queue.length) {
@@ -248,13 +248,13 @@ export function createTurnSystem() {
             return null;
         },
 
-        getCurrentRoom() {
+        getCurrentRoom() {//получаем текущию команту
             const character = gameSession.player;
             const currentLevel = gameSession.levels[this.currentLevelIndex];
             return currentLevel.rooms.find(room => room.id === character.currentRoomId);
         },
 
-        checkLevelCompletion() {
+        checkLevelCompletion() {//проверка на заверщение уровня
             const character = gameSession.player;
             const currentRoom = this.getCurrentRoom();
 
@@ -276,7 +276,7 @@ export function createTurnSystem() {
             }
         },
 
-        checkPlayerDeath() {
+        checkPlayerDeath() {//проверка смерти игрока
             const character = gameSession.player;
             if (character.currentHealth <= 0) {
                 console.log("💀 Игрок погиб! Добавляем в таблицу рекордов...");
@@ -285,7 +285,7 @@ export function createTurnSystem() {
             }
         },
 
-        gameOver(isVictory) {
+        gameOver(isVictory) {//игры закончена
             if (isVictory) {
                 console.log("🏆 ПОБЕДА! Вы прошли все 21 уровень!");
             } else {
