@@ -2,7 +2,6 @@ import { createBackpack } from "./backpack.js";
 import { createCharacter } from "./character.js";
 import { highScores } from "./highscores.js";
 
-// createGameSession: создаёт контейнер состояния игры (уровни, игрок, рекорды)
 export function createGameSession(initial) {
   return {
     levels: [],
@@ -13,7 +12,6 @@ export function createGameSession(initial) {
   };
 }
 
-// gameSession: глобальная сессия текущей игры
 export const gameSession = createGameSession({
   player: createCharacter({
     name: "Azamat",
@@ -30,5 +28,4 @@ export const gameSession = createGameSession({
   isActive: true,
 });
 
-// Делаем доступным для простых AI через globalThis
 globalThis.gameSession = gameSession;

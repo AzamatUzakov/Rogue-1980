@@ -23,8 +23,8 @@ export function createBackpack(option) {
 
 }
 const option = {
-    items: [],           // массив предметов, пока пуст
-    maxPerType: 9        // максимум предметов одного типа
+    items: [],
+    maxPerType: 9
 }
 
 

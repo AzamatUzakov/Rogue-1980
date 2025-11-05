@@ -1,12 +1,9 @@
-// index.js (helpers for integration with UI)
 import Gameplay from "../gameplay/gameplay.js";
 import { highScores } from "./highscores.js";
 
-// Инициализация геймплея
 const gameplay = new Gameplay();
 gameplay.init();
 
-// Функции для UI-интеграции
 export function moveToRoom(roomId) {
     gameplay.tickPlayer('move', { roomId });
 }

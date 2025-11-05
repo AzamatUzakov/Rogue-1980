@@ -3,7 +3,6 @@ import { createEnemy } from "./enemy.js";
 import { createItem } from "./item.js";
 import { generateConnectedLevel } from "../world/generator.js";
 
-// createLevel: создаёт пустую структуру уровня с базовыми полями
 export function createLevel(options) {
     return {
         id: options.id,
@@ -14,27 +13,22 @@ export function createLevel(options) {
     };
 }
 
-// generateRooms: создаёт 9 комнат и помечает стартовую и выход
 function generateRooms(level) {
-    // Секция перенесена в генератор мира; оставлено для совместимости вызовов
 }
 
-// generateConnectedCorridors: соединяет комнаты в связный граф (3x3 решётка)
 function generateConnectedCorridors(level) {
-    // Коридоры формируются генератором мира
 }
 
-// populateRooms: наполняет комнаты врагами/предметами с ростом сложности и лута
 function populateRooms(level, levelIndex) {
-    const difficulty = levelIndex; // 1..21
+    const difficulty = levelIndex;
     const enemyCountBase = 1 + Math.floor(difficulty / 3);
     const foodCountBase = Math.max(4 - Math.floor(difficulty / 4), 0);
     const lootMultiplier = 1 + Math.floor(difficulty / 5);
 
     level.rooms.forEach((room) => {
-        if (room.isStart) return; // стартовая комната пустая
+        if (room.isStart) return;
 
-        const enemiesInRoom = enemyCountBase + Math.floor(Math.random() * 2); // +0..1
+        const enemiesInRoom = enemyCountBase + Math.floor(Math.random() * 2);
         for (let i = 0; i < enemiesInRoom; i++) {
             room.enemies.push(
                 createEnemy({
@@ -64,7 +58,6 @@ function populateRooms(level, levelIndex) {
             );
         }
 
-        // Добавим шанс лёгкого оружия (без сокровищ в комнатах — сокровища только с врагов)
         if (Math.random() < 0.2) {
             room.items.push(
                 createItem({
@@ -78,7 +71,6 @@ function populateRooms(level, levelIndex) {
             );
         }
 
-        // Шанс на эликсир (временный баф)
         if (Math.random() < 0.15) {
             room.items.push(
                 createItem({
@@ -93,7 +85,6 @@ function populateRooms(level, levelIndex) {
             );
         }
 
-        // Шанс на свиток (постоянный баф)
         if (Math.random() < 0.15) {
             room.items.push(
                 createItem({
@@ -109,9 +100,7 @@ function populateRooms(level, levelIndex) {
     });
 }
 
-// generateLevel: собирает комнаты, коридоры и наполнение для конкретного уровня
 export function generateLevel(levelIndex) {
-    // Генерация уровня с делением на 9 секций, случайными комнатами и коридорами с путями
     const generated = generateConnectedLevel(levelIndex);
     const level = {
         id: generated.id,
@@ -126,7 +115,6 @@ export function generateLevel(levelIndex) {
     return level;
 }
 
-// initializeLevels: создаёт и регистрирует 21 уровень в сессии
 export function initializeLevels() {
     gameSession.levels = [];
     for (let i = 1; i <= 21; i++) {

@@ -1,4 +1,3 @@
-// statsManager.js — сбор/хранение статистики прохождений
 let fs = null;
 let path = null;
 let statsFile = null;

@@ -1,4 +1,3 @@
-// saveManager.js — сохранение/загрузка прогресса в JSON
 let fs = null;
 let path = null;
 let baseDir = null;
@@ -12,14 +11,12 @@ async function ensureNode() {
     }
 }
 
-// saveState: сохраняет произвольный объект состояния в файл
 export async function saveState(state) {
     await ensureNode();
     const file = path.resolve(baseDir, 'savegame.json');
     fs.default.writeFileSync(file, JSON.stringify(state, null, 2), 'utf-8');
 }
 
-// loadState: загружает сохранение последней сессии
 export async function loadState() {
     await ensureNode();
     const file = path.resolve(baseDir, 'savegame.json');
@@ -32,7 +29,6 @@ export async function loadState() {
     }
 }
 
-// makeSerializableSession: формирует сериализуемый снимок состояния
 export function makeSerializableSession(gameSession) {
     return {
         player: {
@@ -53,7 +49,6 @@ export function makeSerializableSession(gameSession) {
     };
 }
 
-// applyStateToSession: восстанавливает состояние в текущую сессию
 export function applyStateToSession(gameSession, snapshot) {
     if (!snapshot) return false;
     try {

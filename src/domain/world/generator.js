@@ -1,16 +1,11 @@
-// generator.js — процедурная генерация уровня 3x3 с комнатами и коридорами
-
-// randInt: возвращает целое число в диапазоне [min, max]
 function randInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// manhattan: манхэттенское расстояние между центрами комнат
 function manhattan(a, b) {
     return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
 
-// lineBresenham: дискретная линия между двумя точками (алгоритм Брезенхэма)
 function lineBresenham(x0, y0, x1, y1) {
     const points = [];
     const dx = Math.abs(x1 - x0);
@@ -30,7 +25,6 @@ function lineBresenham(x0, y0, x1, y1) {
     return points;
 }
 
-// rectCenter: центр прямоугольника комнаты в глобальных координатах
 function rectCenter(room) {
     return {
         x: room.position.x + Math.floor(room.size.width / 2),
@@ -38,18 +32,14 @@ function rectCenter(room) {
     };
 }
 
-// buildCorridorPath: строит L‑образный коридор через точку поворота с добивкой Брезенхэмом
 function buildCorridorPath(a, b) {
-    // L-образно: сначала по X, затем по Y (или наоборот, выбираем случайно)
     const firstHorizontal = Math.random() < 0.5;
     const mid = firstHorizontal ? { x: b.x, y: a.y } : { x: a.x, y: b.y };
     const seg1 = lineBresenham(a.x, a.y, mid.x, mid.y);
     const seg2 = lineBresenham(mid.x, mid.y, b.x, b.y);
-    // избегаем дублирования средней точки
     return seg1.concat(seg2.slice(1));
 }
 
-// minimumSpanningTree: простая MST по Приму на графе центров комнат
 function minimumSpanningTree(nodes) {
     const n = nodes.length;
     if (n === 0) return [];
@@ -71,10 +61,9 @@ function minimumSpanningTree(nodes) {
     return edges;
 }
 
-// generateConnectedLevel: создаёт уровень с 9 комнатами и связными коридорами
 export function generateConnectedLevel(levelIndex, options = {}) {
-    const width = options.width ?? 60;   // ширина поля уровня (тайлы)
-    const height = options.height ?? 45; // высота поля уровня (тайлы)
+    const width = options.width ?? 60;
+    const height = options.height ?? 45;
     const sectionsX = 3;
     const sectionsY = 3;
     const sectionW = Math.floor(width / sectionsX);
@@ -90,7 +79,6 @@ export function generateConnectedLevel(levelIndex, options = {}) {
         exitRoomId: 8
     };
 
-    // 1) Комната на каждую секцию 3x3 с случайным размером и позицией внутри секции
     for (let sy = 0; sy < sectionsY; sy++) {
         for (let sx = 0; sx < sectionsX; sx++) {
             const id = sy * sectionsX + sx;
@@ -114,7 +102,6 @@ export function generateConnectedLevel(levelIndex, options = {}) {
         }
     }
 
-    // 2) Связываем комнаты коридорами: MST + несколько случайных дополнительных рёбер
     const centers = level.rooms.map(rectCenter);
     const mst = minimumSpanningTree(centers);
     mst.forEach(({ fromIndex, toIndex }) => {
@@ -130,7 +117,6 @@ export function generateConnectedLevel(levelIndex, options = {}) {
         });
     });
 
-    // Дополнительные коридоры (спайсы), чтобы сделать граф интереснее
     const extra = randInt(2, 4);
     for (let e = 0; e < extra; e++) {
         const i = randInt(0, centers.length - 1);
@@ -145,7 +131,6 @@ export function generateConnectedLevel(levelIndex, options = {}) {
         }
     }
 
-    // 3) Старт и выход — максимально удалённые комнаты по Манхэттену
     let bestA = 0, bestB = 0, bestD = -1;
     for (let i = 0; i < centers.length; i++) {
         for (let j = i + 1; j < centers.length; j++) {

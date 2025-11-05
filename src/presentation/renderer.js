@@ -1,11 +1,9 @@
 import blessed from "blessed";
 import { gameSession } from "../domain/entities/gameSession.js";
 
-// createRenderer: создаёт терминальный UI и функции отрисовки
 export function createRenderer(screen) {
     const layout = {};
 
-    // Основные панели
     layout.map = blessed.box({
         top: 0,
         left: 0,
@@ -53,9 +51,8 @@ export function createRenderer(screen) {
     screen.append(layout.map);
     screen.append(layout.sidebar);
 
-    const seen = new Set(); // туман войны: посещённые тайлы как "x,y"
+    const seen = new Set();
 
-    // --- утилиты координат ---
     function tileKey(x, y) { return `${x},${y}`; }
 
     function getGlobalPlayerPos() {
@@ -89,7 +86,6 @@ export function createRenderer(screen) {
     function computeVisible(level, radius = 12) {
         const cur = getGlobalPlayerPos();
         const visible = new Set();
-        // простое лучевое сканирование по окружности
         for (let a = 0; a < 360; a += 2) {
             const rad = a * Math.PI / 180;
             let x = cur.x, y = cur.y;
@@ -97,17 +93,15 @@ export function createRenderer(screen) {
                 x = Math.round(cur.x + Math.cos(rad) * s);
                 y = Math.round(cur.y + Math.sin(rad) * s);
                 visible.add(tileKey(x, y));
-                if (isRoomWall(level, x, y)) break; // стена блокирует обзор
+                if (isRoomWall(level, x, y)) break;
             }
         }
-        // всегда видна текущая комната полностью
         const room = level.rooms.find(r => r.id === gameSession.player.currentRoomId);
         for (let y = room.position.y; y < room.position.y + room.size.height; y++) {
             for (let x = room.position.x; x < room.position.x + room.size.width; x++) {
                 visible.add(tileKey(x, y));
             }
         }
-        // отмечаем просмотренные
         visible.forEach(k => seen.add(k));
         return visible;
     }
@@ -139,10 +133,8 @@ export function createRenderer(screen) {
             lines.push(row);
         }
 
-        // акторы и предметы поверх
         const cur = getGlobalPlayerPos();
         const mapChars = lines.map(l => l.split(""));
-        // предметы/враги в видимых клетках
         for (const room of level.rooms) {
             for (const e of room.enemies) {
                 const gx = room.position.x + (e.position?.x ?? 0);
@@ -155,12 +147,10 @@ export function createRenderer(screen) {
                 if (visible.has(tileKey(gx, gy))) mapChars[gy][gx] = "*";
             }
         }
-        // игрок
         mapChars[cur.y][cur.x] = "@";
 
         layout.map.setContent(mapChars.map(a => a.join("")).join("\n"));
 
-        // статус
         const p = gameSession.player;
         layout.status.setContent(
             `Имя: ${p.name}\n` +
@@ -170,8 +160,7 @@ export function createRenderer(screen) {
             `Комната: ${p.currentRoomId}`
         );
 
-        // инвентарь, сортировка по ценности сокровищ (value) сверху
-        const items = p.backpack.items ?? p.backpack; // поддержка двух форматов
+        const items = p.backpack.items ?? p.backpack;
         const sorted = [...items].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
         const linesInv = sorted.map((it, idx) => `${idx + 1}. ${it.type}:${it.subtype ?? ""}`);
         layout.inventory.setContent(linesInv.join("\n"));

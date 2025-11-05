@@ -8,8 +8,6 @@ gameSession.levels.forEach((element, levelIndex) => {
     const rooms = element.rooms;
 
     console.log(rooms, "------------------------------");
-
-    // минимальная цепочка для связности
     const shuffled = [...rooms].sort(() => Math.random() - 0.5);
 
     for (let i = 0; i < shuffled.length - 1; i++) {
@@ -27,7 +25,6 @@ gameSession.levels.forEach((element, levelIndex) => {
         createCorridor(option, levelIndex);
     }
 
-    //добавляю дополнительные коридоры
     element.rooms.forEach(room => {
         const possibleIds = rooms
             .map(r => r.id)
@@ -66,30 +63,20 @@ gameSession.levels.forEach((element, levelIndex) => {
     });
 
 });
-
-/* проверяет,
-можно ли из одной комнаты уровня попасть во все остальные комнаты через существующие коридоры. */
 function isLevelConnected(level) {
     const graph = {};
-
-    // строим граф
     level.rooms.forEach(room => {
         graph[room.id] = [];
     });
-
     level.corridors.forEach(corridor => {
         graph[corridor.from].push(corridor.to);
         graph[corridor.to].push(corridor.from);
     });
-
-    // BFS или DFS
     const visited = new Set();
     const start = level.rooms[0]?.id;
     if (!start) return false;
-
     const queue = [start];
     visited.add(start);
-
     while (queue.length) {
         const current = queue.shift();
         for (const neighbor of graph[current]) {
@@ -99,31 +86,19 @@ function isLevelConnected(level) {
             }
         }
     }
-
     return visited.size === level.rooms.length;
 }
-
-
-
-
-/* проверяет,
-связаны ли все комнаты уровня между собой, и если нет —
-автоматически добавляет недостающие коридоры, */
 function connectDisconnectedRooms(level) {
     while (!isLevelConnected(level)) {
         const disconnected = new Set(level.rooms.map(r => r.id));
-
         level.corridors.forEach(corridor => {
             disconnected.delete(corridor.from);
             disconnected.delete(corridor.to);
         });
-
         const allIds = level.rooms.map(r => r.id);
         const from = allIds[Math.floor(Math.random() * allIds.length)];
         const to = Array.from(disconnected)[Math.floor(Math.random() * disconnected.size)];
-
         if (!to) break;
-
         const option = {
             id: `${from}-${to}`,
             from,
@@ -135,7 +110,6 @@ function connectDisconnectedRooms(level) {
             ],
             locked: false
         };
-
         level.corridors.push(option);
         console.log(`🔗 Добавлен коридор ${from} -> ${to} для связности`);
     }

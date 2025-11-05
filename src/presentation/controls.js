@@ -1,7 +1,6 @@
 import { turnSystem } from "../domain/gameplay/turnSystem.js";
 import { gameSession } from "../domain/entities/gameSession.js";
 
-// bindControls: вешает управление на экран (WASD, инвентарь)
 export function bindControls(screen, redraw) {
     const move = (dx, dy) => {
         if (turnSystem.playerAction('moveInRoom', { dx, dy })) redraw();
@@ -12,18 +11,15 @@ export function bindControls(screen, redraw) {
     screen.key(['a', 'A', 'left'], () => move(-1, 0));
     screen.key(['d', 'D', 'right'], () => move(1, 0));
 
-    // Вызов меню использования предметов по типам
     function chooseAndUse(filterFn) {
         const items = (gameSession.player.backpack.items ?? gameSession.player.backpack).filter(filterFn);
         if (!items.length) return;
-        // Модальная подсказка в консоль
         console.log("Выберите предмет (1–9), 0 — снять оружие");
         let handler;
         handler = (ch, key) => {
             const name = key.name;
             if (name === 'escape') { screen.removeListener('keypress', handler); return; }
             if (name === '0') {
-                // снять оружие
                 gameSession.player.equipWeapon(null);
                 screen.removeListener('keypress', handler);
                 redraw();

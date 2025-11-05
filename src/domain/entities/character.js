@@ -13,13 +13,10 @@ export function createCharacter(options) {
         weapon: options.weapon ?? null,
         currentRoomId: 0,
         position: options.position ?? { x: 0, y: 0 },
-        // 🎒 новое
         backpack: options.backpack ?? [],
         gold: options.gold ?? 0,
-        // ⚗️ активные временные эффекты эликсиров
         activeEffects: [],
 
-        // --- метод: получить урон ---
         takeDamage(amount) {
             this.currentHealth -= amount;
             console.log(`Получен урон: -${amount} HP`);
@@ -32,7 +29,6 @@ export function createCharacter(options) {
             this.showHealth();
         },
 
-        // --- метод: восстановить здоровье ---
         heal(amount) {
             this.currentHealth += amount;
             if (this.currentHealth > this.maxHealth) {
@@ -42,45 +38,34 @@ export function createCharacter(options) {
             this.showHealth();
         },
 
-        // --- показать здоровье ---
         showHealth() {
             console.log(`❤️ Здоровье: ${this.currentHealth}/${this.maxHealth}`);
         },
 
-        // --- смерть ---
         die() {
             console.log("💀 Вы умерли. Игра окончена!");
-
-            // 🔁 Сброс состояния игрока
             this.level = 1;
             this.currentHealth = this.maxHealth;
             this.backpack = createBackpack({ items: [], maxPerType: 9 });
             this.gold = 0;
             this.currentRoomId = 0;
-
-            // 🔁 Сброс состояния сессии
             gameSession.currentLevel = 1;
             gameSession.score = 0;
             gameSession.startTime = Date.now();
             gameSession.inventory = [];
             gameSession.isActive = true;
-
-            // Обновляем здоровье игрока через gameSession, если нужно
             if (gameSession.player) {
                 gameSession.player.health = gameSession.player.maxHealth;
             }
-
             console.log("🔁 Игра начата заново!");
             console.log(`🏁 Уровень: ${gameSession.currentLevel}, ❤️ Здоровье: ${gameSession.player.health}/${gameSession.player.maxHealth}`);
         },
 
-        // --- добавить предмет ---
         addItem(item) {
             this.backpack.push(item);
             console.log(`🎒 Добавлен предмет: ${item.subtype}`);
         },
 
-        // --- показать инвентарь ---
         showInventory() {
             if (this.backpack.length === 0) {
                 console.log("📭 Рюкзак пуст.");
@@ -92,7 +77,6 @@ export function createCharacter(options) {
             }
         },
 
-        // --- использовать предмет ---
         useItem(itemId) {
             const itemIndex = this.backpack.findIndex((i) => i.id === itemId);
             if (itemIndex === -1) {
@@ -101,22 +85,15 @@ export function createCharacter(options) {
             }
 
             const item = this.backpack[itemIndex];
-
-            // делегируем применению предмета собственную логику
             item.use(this);
-
-            // удалить использованный предмет
-            // Оружие не тратится, но мы удаляем из рюкзака экземпляр, т.к. он экипирован
             this.backpack.splice(itemIndex, 1);
         },
 
-        // --- экиповать оружие и уронить предыдущее на пол ---
         equipWeapon(newWeapon) {
             if (this.weapon) {
                 const currentLevel = gameSession.levels[this.level - 1];
                 const room = currentLevel.rooms.find(r => r.id === this.currentRoomId);
                 if (room) {
-                    // Положим старое оружие на соседнюю клетку
                     const dirs = [
                         { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }
                     ];
@@ -130,31 +107,25 @@ export function createCharacter(options) {
             this.weapon = newWeapon;
         },
 
-        // --- применить временный эффект (эликсир) ---
         applyTemporaryEffect({ stat, amount, turns }) {
             this[stat] = (this[stat] ?? 0) + amount;
             this.activeEffects.push({ stat, amount, turns });
         },
 
-        // --- применить постоянный буст (свиток) ---
         applyPermanentBoost({ stat, amount }) {
             this[stat] = (this[stat] ?? 0) + amount;
             if (stat === "maxHealth") {
-                // При росте максимального здоровья — сразу растёт текущее
                 this.currentHealth += amount;
             }
         },
 
-        // --- тик эффектов: уменьшаем длительность и откатываем бафы ---
         tickEffects() {
             if (!this.activeEffects.length) return;
             this.activeEffects.forEach(e => (e.turns -= 1));
             const expired = this.activeEffects.filter(e => e.turns <= 0);
-            // откатываем истёкшие эффекты
             expired.forEach(e => {
                 this[e.stat] = (this[e.stat] ?? 0) - e.amount;
                 if (e.stat === "maxHealth") {
-                    // Клэмпим здоровье и страхуемся на минимальное 1, если стало ≤ 0
                     if (this.currentHealth > this.maxHealth) this.currentHealth = this.maxHealth;
                     if (this.currentHealth <= 0) this.currentHealth = 1;
                 }
@@ -162,7 +133,6 @@ export function createCharacter(options) {
             this.activeEffects = this.activeEffects.filter(e => e.turns > 0);
         },
 
-        // --- переход на новый уровень ---
         goToNextLevel() {
             this.level += 1;
             console.log(`🚪 Вы перешли на уровень ${this.level}!`);
@@ -176,7 +146,6 @@ export function createCharacter(options) {
             this.currentRoomId = nextLevel.startRoomId
             const startRoom = nextLevel.rooms.find(r => r.id === this.currentRoomId);
             if (startRoom) {
-                // случайная позиция внутри стартовой комнаты
                 this.position = {
                     x: Math.floor(Math.random() * startRoom.size.width),
                     y: Math.floor(Math.random() * startRoom.size.height)
@@ -185,11 +154,9 @@ export function createCharacter(options) {
             console.log(`📍 Вы появились в комнате №${this.currentRoomId} уровня ${this.level}.`);
         },
 
-        moveToRoom(targetRoomId) {// переход в другую комнату
-            const currentLevel = gameSession.levels[this.level - 1]; // текущий уровень
+        moveToRoom(targetRoomId) {
+            const currentLevel = gameSession.levels[this.level - 1];
             const currentRoom = this.currentRoomId;
-
-            // соединяющий текущую и целевую комнаты
             const corridor = currentLevel.corridors.find(c =>
                 !c.locked &&
                 ((c.from === currentRoom && c.to === targetRoomId) ||
@@ -200,12 +167,8 @@ export function createCharacter(options) {
                 console.log("🚫 Путь между комнатами недоступен.");
                 return;
             }
-
-            // перемещаем игрока
             this.currentRoomId = targetRoomId;
             console.log(`🚶 Вы перешли в комнату №${targetRoomId} уровня ${this.level}.`);
-
-            // проверяем события комнаты
             const room = currentLevel.rooms.find(r => r.id === targetRoomId);
 
             if (room.isExit) {
@@ -218,11 +181,9 @@ export function createCharacter(options) {
 
             if (room.items.length > 0) {
                 console.log(`🎁 В комнате есть предметы: ${room.items.map(i => i.subtype).join(", ")}`);
-                // Предметы теперь лежат на клетках — автоподбор будет при шаге по клетке
             }
         },
 
-        // --- перемещение внутри комнаты на dx,dy; автоподбор и контакт-атака ---
         moveInRoom(dx, dy) {
             const currentLevel = gameSession.levels[this.level - 1];
             const room = currentLevel.rooms.find(r => r.id === this.currentRoomId);
@@ -234,28 +195,22 @@ export function createCharacter(options) {
             const insideY = wantY >= 0 && wantY < room.size.height;
 
             if (insideX && insideY) {
-                // обычное перемещение внутри комнаты
                 this.position = { x: wantX, y: wantY };
             } else {
-                // попытка выйти за пределы комнаты — проверим коридор и переход в соседнюю
                 const globalX = room.position.x + this.position.x + dx;
                 const globalY = room.position.y + this.position.y + dy;
-
-                // найдём коридор, чья линия содержит требуемую клетку рядом
                 const corridors = currentLevel.corridors.filter(c => c.from === room.id || c.to === room.id);
                 const corridor = corridors.find(c => c.path?.some(p => p.x === globalX && p.y === globalY));
                 if (corridor) {
                     const targetRoomId = corridor.from === room.id ? corridor.to : corridor.from;
                     const targetRoom = currentLevel.rooms.find(r => r.id === targetRoomId);
                     if (targetRoom) {
-                        // точка входа: ближайшая точка пути, которая лежит внутри целевой комнаты
                         let entry = null;
                         for (const p of corridor.path) {
                             const inside = p.x >= targetRoom.position.x && p.x < targetRoom.position.x + targetRoom.size.width &&
                                 p.y >= targetRoom.position.y && p.y < targetRoom.position.y + targetRoom.size.height;
                             if (inside) { entry = p; break; }
                         }
-                        // если не нашли — поставим у границы в направлении движения
                         if (!entry) entry = { x: Math.max(targetRoom.position.x, Math.min(targetRoom.position.x + targetRoom.size.width - 1, globalX)),
                             y: Math.max(targetRoom.position.y, Math.min(targetRoom.position.y + targetRoom.size.height - 1, globalY)) };
                         this.currentRoomId = targetRoomId;
@@ -263,11 +218,8 @@ export function createCharacter(options) {
                         return true;
                     }
                 }
-                // коридор не найден — остаёмся на месте
                 return false;
             }
-
-            // Подбор предметов по наступанию на клетку
             let remaining = [];
             for (const it of room.items) {
                 if (it.position && it.position.x === nx && it.position.y === ny) {
@@ -277,17 +229,13 @@ export function createCharacter(options) {
                 }
             }
             room.items = remaining;
-
-            // Если наступили на клетку с врагом — инициация боя (один удар от игрока)
             const enemy = room.enemies.find(e => e.position && e.position.x === this.position.x && e.position.y === this.position.y && e.currentHealth > 0);
             if (enemy) {
-                // Если это призрак и он невидим — становится видимым, бой со следующего удара
                 if (enemy.type === 'Ghost' && enemy._invisible) {
                     enemy._invisible = false;
                     console.log("👻 Привидение проявилось!");
                     return true;
                 }
-                // простой контакт-бой: один удар игрока в свой ход
                 attack(this, enemy);
             }
             return true;
@@ -299,33 +247,3 @@ export function createCharacter(options) {
 
     return character;
 }
-//console.log(createCharacter());
-
-// пример использовния в другом файле:
-
-
-
-// import { createCharacter } from "./character.js";
-// import { createItem } from "./item.js";
-
-// const hero = createCharacter({ name: "Леон", strength: 6 });
-// const apple = createItem({
-//   id: 1, type: "Food", subtype: "Apple", health: 10,
-// });
-// const sword = createItem({
-//   id: 2, type: "Weapon", subtype: "Sword", strength: 3, damage: 5,
-// });
-// const gold = createItem({
-//   id: 3, type: "Treasure", subtype: "Gold", value: 20,
-// });
-
-// hero.addItem(apple);
-// hero.addItem(sword);
-// hero.addItem(gold);
-// hero.showInventory();
-
-// hero.useItem(1); // еда — лечит
-// hero.useItem(2); // оружие — экипируется
-// hero.useItem(3); // золото — добавляется
-
-// hero.goToNextLevel();

@@ -1,4 +1,3 @@
-// turnSystem.js
 import { attack } from "./combat.js";
 import { gameSession } from "../entities/gameSession.js";
 import { highScores } from "../entities/highscores.js";
@@ -10,16 +9,14 @@ export function createTurnSystem() {
         isPlayerTurn: true,
         currentLevelIndex: 0,
         turnCount: 0,
-        playerAsleepTurns: 0, // счётчик сна игрока (задерживает ход)
+        playerAsleepTurns: 0,
 
-        // Главная функция хода игрока
         playerAction(actionType, data) {
             if (!this.isPlayerTurn) {
                 console.log("🚫 Сейчас не ваш ход!");
                 return false;
             }
 
-            // Если игрок усыплён — пропускает ход
             if (this.playerAsleepTurns > 0) {
                 console.log("😴 Вы усыплены и пропускаете ход");
                 this.playerAsleepTurns -= 1;
@@ -31,7 +28,6 @@ export function createTurnSystem() {
 
             console.log(`🎮 Ход ${this.turnCount + 1}: Игрок выполняет ${actionType}`);
 
-            // Выполняем действие игрока
             let actionSuccess = false;
             switch (actionType) {
                 case 'move':
@@ -55,7 +51,6 @@ export function createTurnSystem() {
             }
 
             if (actionSuccess) {
-                // Передаем ход врагам
                 this.isPlayerTurn = false;
                 this.enemyTurn();
                 this.turnCount++;
@@ -81,8 +76,6 @@ export function createTurnSystem() {
 
             if (enemy && enemy.currentHealth > 0) {
                 attack(character, enemy);
-
-                // Если враг умер, убираем его из комнаты
                 if (enemy.currentHealth <= 0) {
                     const enemyIndex = currentRoom.enemies.indexOf(enemy);
                     if (enemyIndex > -1) {
@@ -128,8 +121,6 @@ export function createTurnSystem() {
             console.log("🎭 Ход противников...");
             const currentLevel = gameSession.levels[this.currentLevelIndex];
             let enemyActions = 0;
-
-            // Все живые враги на уровне делают ход
             currentLevel.rooms.forEach(room => {
                 room.enemies.forEach(enemy => {
                     if (enemy.currentHealth > 0) {
@@ -138,17 +129,10 @@ export function createTurnSystem() {
                     }
                 });
             });
-
             console.log(`🤖 Выполнено действий врагов: ${enemyActions}`);
-
-            // Проверяем состояние после хода врагов
             this.checkLevelCompletion();
             this.checkPlayerDeath();
-
-            // Тикаем временные эффекты игрока
             gameSession.player.tickEffects();
-
-            // Возвращаем ход игроку
             this.isPlayerTurn = true;
             console.log("🎮 Ваш ход!");
         },
@@ -157,41 +141,33 @@ export function createTurnSystem() {
             const character = gameSession.player;
             const currentLevel = gameSession.levels[this.currentLevelIndex];
 
-            // Если враг в той же комнате, что и игрок - атакует
             if (room.id === character.currentRoomId) {
                 console.log(`⚔️ ${enemy.name} атакует игрока!`);
-                // Особое поведение огра: отдых после атаки
                 if (enemy._restTurns && enemy._restTurns > 0) {
                     enemy._restTurns -= 1;
                     console.log(`${enemy.name} отдыхает.`);
                     return;
                 }
-                // Если у огра помечена гарантированная контратака — бьёт дважды
                 if (enemy._counterNext) {
                     attack(enemy, character);
                     enemy._counterNext = false;
                 }
                 attack(enemy, character);
-                // После успешной атаки некоторые типы накладывают эффекты
                 if (enemy.type === "Vampire") {
-                    // Вампир отнимает часть максимального HP
                     character.maxHealth = Math.max(1, character.maxHealth - 1);
                     if (character.currentHealth > character.maxHealth) character.currentHealth = character.maxHealth;
                 }
                 if (enemy.type === "Ogre") {
-                    // Огр отдыхает один ход после атаки
                     enemy._restTurns = 1;
-                    enemy._counterNext = true; // затем гарантированно контратакует
+                    enemy._counterNext = true;
                 }
                 if (enemy.type === "SnakeMage") {
-                    // Шанс усыпить игрока на 1 ход
                     if (Math.random() < 0.3) {
                         this.playerAsleepTurns = 1;
                         console.log("💤 Вас усыпили на 1 ход!");
                     }
                 }
             } else {
-                // Иначе двигается. При агро — идёт к игроку по комнатам, иначе по паттерну
                 enemy.checkAggro(character.position);
                 if (enemy.movePattern === 'chase') {
                     const path = this.shortestRoomPath(currentLevel, room.id, character.currentRoomId);
@@ -199,7 +175,6 @@ export function createTurnSystem() {
                         const nextRoomId = path[1];
                         const nextRoom = currentLevel.rooms.find(r => r.id === nextRoomId);
                         if (nextRoom) {
-                            // переносим врага в соседнюю комнату по коридору
                             const idx = room.enemies.indexOf(enemy);
                             if (idx > -1) room.enemies.splice(idx, 1);
                             enemy.position = { x: Math.floor(Math.random() * nextRoom.size.width), y: Math.floor(Math.random() * nextRoom.size.height) };
@@ -208,12 +183,10 @@ export function createTurnSystem() {
                         }
                     }
                 }
-                // если пути нет — двигается внутри комнаты по своему паттерну
                 enemy.move(room);
             }
         },
 
-        // Поиск кратчайшего пути по комнатам с использованием коридоров
         shortestRoomPath(level, startId, goalId) {
             if (startId === goalId) return [startId];
             const graph = new Map();
@@ -236,7 +209,6 @@ export function createTurnSystem() {
                     visited.add(nb);
                     prev.set(nb, cur);
                     if (nb === goalId) {
-                        // восстановим путь
                         const path = [goalId];
                         let p = goalId;
                         while (prev.has(p)) { p = prev.get(p); path.unshift(p); }
@@ -262,12 +234,8 @@ export function createTurnSystem() {
                 console.log("🚪 Найден выход с уровня!");
                 character.goToNextLevel();
                 this.currentLevelIndex = character.level - 1;
-
-                // сохраняем прогресс после перехода на следующий уровень
                 const snapshot = makeSerializableSession(gameSession);
                 saveState(snapshot);
-
-                // Если прошли все уровни
                 if (character.level > 21) {
                     console.log("🎉 Победа! Вы прошли все 21 уровень!");
                     highScores.addScore(character.name, 21, character.gold);
@@ -290,13 +258,11 @@ export function createTurnSystem() {
                 console.log("🏆 ПОБЕДА! Вы прошли все 21 уровень!");
             } else {
                 console.log("💀 ГAME OVER");
-                // сохраняем статистику прохождения
                 appendRunStat({
                     player: gameSession.player.name,
                     level: gameSession.player.level,
                     treasures: gameSession.player.gold,
                 });
-                // Автоматический рестарт через 2 секунды
                 setTimeout(() => {
                     gameSession.player.die();
                     this.reset();
@@ -311,20 +277,18 @@ export function createTurnSystem() {
             console.log("🔄 Игра перезапущена! Ваш ход.");
         },
 
-        // Получить доступные действия для текущей комнаты
         getAvailableActions() {
             const currentRoom = this.getCurrentRoom();
             const character = gameSession.player;
 
             return {
-                canMove: true, // всегда можно перемещаться
+                canMove: true,
                 enemies: currentRoom ? currentRoom.enemies.filter(e => e.currentHealth > 0) : [],
                 items: currentRoom ? currentRoom.items : [],
                 backpack: character.backpack.items
             };
         },
 
-        // Получить текущее состояние игры
         getGameState() {
             return {
                 isPlayerTurn: this.isPlayerTurn,
@@ -340,5 +304,4 @@ export function createTurnSystem() {
     return turnSystem;
 }
 
-// Создаем глобальный экземпляр
 export const turnSystem = createTurnSystem();
